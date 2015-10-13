@@ -1,0 +1,39 @@
+{
+"version":"3.0.4.Final",
+"artifact" : "org.jboss.weld:weld-core-impl",
+"total":1,
+"messages":[
+{
+    "projectCode": "WELD-",
+    "method": {
+        "sig":"message1(java.lang.Object param1)",
+        "retType":"void",
+        "interface":"org.jboss.weld.logging.ReflectionLogger"
+     },
+     "log":{
+        "level":"DEBUG"
+     },
+     "msg":{
+        "id":0,
+        "value":"This is message 1",
+        "format":"MESSAGE_FORMAT"
+     }
+},
+{
+    "projectCode": "WELD-",
+    "method": {
+        "sig":"message2(java.lang.Object param1)",
+        "retType":"void",
+        "interface":"org.jboss.weld.logging.ReflectionLogger"
+     },
+     "log":{
+        "level":"DEBUG"
+     },
+     "msg":{
+        "id":0,
+        "value":"DIFFERENT: This is message 2",
+        "format":"MESSAGE_FORMAT"
+     }
+}
+]
+}

@@ -1,0 +1,24 @@
+{
+"version":"3.0.2-SNAPSHOT",
+"artifact" : "org.jboss.weld:weld-core-impl",
+"total":1,
+"messages":[
+{
+    "projectCode": "WELD-",
+    "method": {
+        "sig":"missingRetention(java.lang.Object param1)",
+        "retType":"void",
+        "interface":"org.jboss.weld.logging.ReflectionLogger"
+     },
+     "log":{
+        "level":"DEBUG"
+     },
+     "msg":{
+        "id":600,
+        "value":"TEST {0} is missing @Retention(RUNTIME). Weld will use this annotation, however this may make the application unportable.",
+        "format":"MESSAGE_FORMAT"
+     },
+     suppressions:["weldlog:msg-value"]
+}
+]
+}

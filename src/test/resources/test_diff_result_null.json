@@ -1,0 +1,1 @@
+{"indexes":[{"version":"3.0.0-SNAPSHOT","artifact":"org.jboss.weld:weld-core-impl","total":1,"filePath":"src/test/resources/test_diff_01.json"},{"version":"2.2.10.Final","artifact":"org.jboss.weld:weld-core-impl","total":1,"filePath":"src/test/resources/test_diff_02.json"}],"detectCollisionsOnly":true,"total":0,"differences":null}
