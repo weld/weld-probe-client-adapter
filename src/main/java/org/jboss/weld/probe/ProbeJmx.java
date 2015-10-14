@@ -53,9 +53,7 @@ import io.undertow.servlet.util.ImmediateInstanceHandle;
  */
 public class ProbeJmx {
 
-    static final String SYSTEM_PROPERTY_JMX_SERVICE_HOST = "org.jboss.weld.probe.jmxServiceHost";
-
-    static final String SYSTEM_PROPERTY_JMX_SERVICE_PORT = "org.jboss.weld.probe.jmxServicePort";
+    static final String SYSTEM_PROPERTY_JMX_SERVICE_URL = "org.jboss.weld.probe.jmxServiceUrl";
 
     static final String SYSTEM_PROPERTY_UT_HOST = "org.jboss.weld.probe.undertowHost";
 
@@ -65,14 +63,15 @@ public class ProbeJmx {
 
     static final String PROBE_FILTER_NAME = "Weld Probe Filter";
 
+    static final String DEFAULT_JMX_SERVICE_URL = "service:jmx:rmi:///jndi/rmi://127.0.0.1:9999/jmxrmi";
+
     public static void main(String[] args) {
         new ProbeJmx().run();
     }
 
     void run() {
 
-        final String jmxServiceUrl = "service:jmx:rmi:///jndi/rmi://" + System.getProperty(SYSTEM_PROPERTY_JMX_SERVICE_HOST, "127.0.0.1") + ":"
-                + System.getProperty(SYSTEM_PROPERTY_JMX_SERVICE_PORT, "9999") + "/jmxrmi";
+        final String jmxServiceUrl = System.getProperty(SYSTEM_PROPERTY_JMX_SERVICE_URL, DEFAULT_JMX_SERVICE_URL);
         System.out.println("Connecting to a remote JMX server: " + jmxServiceUrl);
 
         try (JMXConnector jmxc = JMXConnectorFactory.connect(new JMXServiceURL(jmxServiceUrl), null)) {
