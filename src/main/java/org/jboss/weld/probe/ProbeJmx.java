@@ -66,105 +66,174 @@ public class ProbeJmx {
     static final String DEFAULT_JMX_SERVICE_URL = "service:jmx:rmi:///jndi/rmi://127.0.0.1:9999/jmxrmi";
 
     public static void main(String[] args) {
-        new ProbeJmx().run();
+        new ProbeJmx().start();
     }
 
-    void run() {
+    private Console console;
 
-        final String jmxServiceUrl = System.getProperty(SYSTEM_PROPERTY_JMX_SERVICE_URL, DEFAULT_JMX_SERVICE_URL);
+    private List<ObjectName> names;
+
+    private Undertow undertow;
+
+    private String undertowHost;
+
+    private int undertowPort;
+
+    private MBeanServerConnection connection;
+
+    private Integer currentIndex;
+
+    void start() {
+
+        String jmxServiceUrl = System.getProperty(SYSTEM_PROPERTY_JMX_SERVICE_URL, DEFAULT_JMX_SERVICE_URL);
         System.out.println("Connecting to a remote JMX server: " + jmxServiceUrl);
 
         try (JMXConnector jmxc = JMXConnectorFactory.connect(new JMXServiceURL(jmxServiceUrl), null)) {
 
-            MBeanServerConnection connection = jmxc.getMBeanServerConnection();
+            connection = jmxc.getMBeanServerConnection();
             ObjectName queryName;
             try {
                 queryName = new ObjectName(Probe.class.getPackage().getName() + ":type=JsonData,context=*");
             } catch (MalformedObjectNameException e) {
                 throw new RuntimeException(e);
             }
-            List<ObjectName> names = new ArrayList<>(connection.queryNames(queryName, null));
+            names = new ArrayList<>(connection.queryNames(queryName, null));
 
             if (names.isEmpty()) {
                 System.err.println("No Weld containers with Probe JMX enabled");
                 System.exit(1);
             }
 
-            Console console = new Console();
+            undertowHost = System.getProperty(SYSTEM_PROPERTY_UT_HOST, "127.0.0.1");
+            undertowPort = Integer.valueOf(System.getProperty(SYSTEM_PROPERTY_UT_PORT, "8181"));
+            console = new Console();
+            String command = "c";
 
-            StringBuilder prompt = new StringBuilder();
-            prompt.append("Choose a Weld container (JSON data provider):");
-            prompt.append(System.lineSeparator());
-            for (ListIterator<ObjectName> iterator = names.listIterator(); iterator.hasNext();) {
-                prompt.append("[");
-                prompt.append(iterator.nextIndex());
-                prompt.append("]");
-                prompt.append(" ");
-                prompt.append(iterator.next());
-                prompt.append(System.lineSeparator());
-            }
-            prompt.append(System.lineSeparator());
+            do {
+                processCommand(command);
+            } while (!isExit(command = commandPrompt()));
 
-            int index = Integer.valueOf(console.readLine(prompt.toString()));
-            if (index < names.size()) {
-
-                ObjectName name = names.get(index);
-                System.out.println("Connecting to the Weld container [" + index + "]: " + name);
-
-                final JsonDataProvider dataProvider = JMX.newMXBeanProxy(connection, name, JsonDataProvider.class);
-
-                String undertowHost = System.getProperty(SYSTEM_PROPERTY_UT_HOST, "127.0.0.1");
-                int undertowPort = Integer.valueOf(System.getProperty(SYSTEM_PROPERTY_UT_PORT, "8181"));
-                System.out.println("Starting Undertow...");
-
-                DeploymentInfo servletBuilder = Servlets.deployment().setClassLoader(ProbeJmx.class.getClassLoader()).setContextPath("/" + PROBE_JMX_APP)
-                        .setDeploymentName("probe-jmx.war")
-                        .addFilter(Servlets.filter(PROBE_FILTER_NAME, SimpleProbeFilter.class, new InstanceFactory<SimpleProbeFilter>() {
-                            @Override
-                            public InstanceHandle<SimpleProbeFilter> createInstance() throws InstantiationException {
-                                return new ImmediateInstanceHandle<SimpleProbeFilter>(new SimpleProbeFilter(dataProvider));
-                            }
-                        })).addFilterUrlMapping(PROBE_FILTER_NAME, "/*", DispatcherType.REQUEST);
-
-                DeploymentManager manager = Servlets.defaultContainer().addDeployment(servletBuilder);
-                manager.deploy();
-                PathHandler path;
-                try {
-                    path = Handlers.path(Handlers.redirect(PROBE_JMX_APP)).addPrefixPath(PROBE_JMX_APP, manager.start());
-                } catch (ServletException e) {
-                    throw new RuntimeException(e);
-                }
-
-                Undertow server = Undertow.builder().addHttpListener(undertowPort, undertowHost).setHandler(path).build();
-                server.start();
-
-                prompt = new StringBuilder();
-                prompt.append("Weld Probe HTML client available at: http://");
-                prompt.append(undertowHost);
-                prompt.append(":");
-                prompt.append(undertowPort);
-                prompt.append("/");
-                prompt.append(PROBE_JMX_APP);
-                prompt.append("/weld-probe");
-                prompt.append(System.lineSeparator());
-                prompt.append("Type ENTER to stop the container...");
-                prompt.append(System.lineSeparator());
-
-                String command = console.readLine(prompt.toString());
-                if (command != null) {
-                    server.stop();
-                }
-            }
+            stopUndertow();
 
         } catch (IOException e) {
             throw new RuntimeException("Could not connect to a remote JMX server", e);
         }
     }
 
+    private void processCommand(String command) {
+        if ("c".equals(command) || "connect".equals(command)) {
+            String indexStr = selectionPrompt();
+            Integer index;
+            while ((index = parseIndexStr(indexStr)) == null || index > names.size() || index < 0) {
+                indexStr = selectionPrompt();
+            }
+            currentIndex = index;
+            reconnect(index, names.get(index));
+        } else if ("h".equals(command) || "help".equals(command)) {
+            System.out.println("Help - available commands: ");
+            System.out.println("'e' or 'exit' to exit?");
+            System.out.println("'c' or 'connect' to connect/reconnect to a Weld container");
+            System.out.println("'h' or 'help' to show this help");
+        } else {
+            System.out.println("Connected to the Weld container [" + currentIndex + "]: " + names.get(currentIndex));
+        }
+    }
+
+    private boolean isExit(String command) {
+        return "e".equals(command) || "exit".equals(command);
+    }
+
+    private String commandPrompt() {
+        StringBuilder prompt = new StringBuilder();
+        if (currentIndex == null) {
+            prompt.append("[disconnected");
+        } else {
+            prompt.append("[connected #");
+            prompt.append(currentIndex);
+        }
+        prompt.append("]$ ");
+        return console.readLine(prompt.toString());
+    }
+
+    private String selectionPrompt() {
+        StringBuilder select = new StringBuilder();
+        select.append("Select a Weld container (JSON data provider):");
+        select.append(System.lineSeparator());
+        for (ListIterator<ObjectName> iterator = names.listIterator(); iterator.hasNext();) {
+            select.append("[");
+            select.append(iterator.nextIndex());
+            select.append("]");
+            select.append(" ");
+            select.append(iterator.next());
+            select.append(System.lineSeparator());
+        }
+        System.out.println(select);
+        return commandPrompt();
+    }
+
+    private Integer parseIndexStr(String indexStr) {
+        try {
+            return Integer.valueOf(indexStr);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private void reconnect(Integer index, ObjectName mBeanName) {
+
+        System.out.println("Connecting to the Weld container [" + index + "]: " + mBeanName);
+
+        stopUndertow();
+
+        final JsonDataProvider jsonDataProvider = JMX.newMXBeanProxy(connection, mBeanName, JsonDataProvider.class);
+
+        System.out.println("Starting Undertow...");
+
+        DeploymentInfo servletBuilder = Servlets.deployment().setClassLoader(ProbeJmx.class.getClassLoader()).setContextPath("/" + PROBE_JMX_APP)
+                .setDeploymentName("probe-jmx.war")
+                .addFilter(Servlets.filter(PROBE_FILTER_NAME, SimpleProbeFilter.class, new InstanceFactory<SimpleProbeFilter>() {
+                    @Override
+                    public InstanceHandle<SimpleProbeFilter> createInstance() throws InstantiationException {
+                        return new ImmediateInstanceHandle<SimpleProbeFilter>(new SimpleProbeFilter(jsonDataProvider));
+                    }
+                })).addFilterUrlMapping(PROBE_FILTER_NAME, "/*", DispatcherType.REQUEST);
+
+        DeploymentManager manager = Servlets.defaultContainer().addDeployment(servletBuilder);
+        manager.deploy();
+        PathHandler path;
+        try {
+            path = Handlers.path(Handlers.redirect(PROBE_JMX_APP)).addPrefixPath(PROBE_JMX_APP, manager.start());
+        } catch (ServletException e) {
+            throw new RuntimeException(e);
+        }
+        undertow = Undertow.builder().addHttpListener(undertowPort, undertowHost).setHandler(path).build();
+        undertow.start();
+
+        StringBuilder info = new StringBuilder();
+        info = new StringBuilder();
+        info.append("Weld Probe HTML client available at: http://");
+        info.append(undertowHost);
+        info.append(":");
+        info.append(undertowPort);
+        info.append("/");
+        info.append(PROBE_JMX_APP);
+        info.append("/weld-probe");
+        info.append(System.lineSeparator());
+        System.out.println(info);
+    }
+
+    private void stopUndertow() {
+        if (undertow != null) {
+            System.out.println("Stopping Undertow...");
+            undertow.stop();
+        }
+    }
+
     private static class Console {
 
-        BufferedReader reader;
-        PrintStream print;
+        private final BufferedReader reader;
+
+        private final PrintStream print;
 
         Console() {
             reader = new BufferedReader(new InputStreamReader(System.in));
