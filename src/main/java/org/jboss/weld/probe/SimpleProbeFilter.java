@@ -17,6 +17,7 @@
 package org.jboss.weld.probe;
 
 import java.io.IOException;
+import java.util.logging.Logger;
 
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -37,6 +38,8 @@ import org.jboss.weld.probe.Resource.HttpMethod;
 public class SimpleProbeFilter implements Filter {
 
     static final String REST_URL_PATTERN_BASE = "/weld-probe";
+
+    static final Logger LOGGER = Logger.getLogger(SimpleProbeFilter.class.getName());
 
     private JsonDataProvider jsonDataProvider;
 
@@ -95,7 +98,11 @@ public class SimpleProbeFilter implements Filter {
             }
         }
         ProbeLogger.LOG.resourceMatched(resource, req.getRequestURI());
-        resource.handle(httpMethod, jsonDataProvider, resourcePathParts, req, resp);
+        try {
+            resource.handle(httpMethod, jsonDataProvider, resourcePathParts, req, resp);
+        } catch (Exception e) {
+            LOGGER.log(java.util.logging.Level.WARNING, "Cannot handle " + httpMethod + " for " + resource, e.getCause() != null ? e.getCause() : e);
+        }
     }
 
     private Resource matchResource(String[] resourcePathParts) {
