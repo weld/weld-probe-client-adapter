@@ -1,14 +1,35 @@
-# weld-probe-jmx
+# weld-probe-client-adapter
 
-This is a Weld Probe JMX client reusing the default HTML GUI.
+This adapter allows to reuse the default HTML GUI even if there is no REST API available:
+
+The adapter:
+
+1. Either connects to a JMX server or loads data from an export file
+2. Starts an embedded Undertow instance
+3. Exposes the default HTML client but using the data from step 1
 
 ## Build and run
 
 > mvn clean package
 
-> java -jar target/weld-probe-jmx-1.0.0-SNAPSHOT-shaded.jar
+> java -jar target/weld-probe-client-adapter-1.0.0-SNAPSHOT-shaded.jar
+
+### Export file
+
+The first argument represents the path to an export file:
+
+> java -jar target/weld-probe-client-adapter-1.0.0-SNAPSHOT-shaded.jar /home/edgar/weld-probe-export.zip
+
+### JMX
 
 Don't forget to allow to connect to a remote JVM process. E.g. use the following system properties: `-Dcom.sun.management.jmxremote.port=9999 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false`.
+
+### WildFly
+
+For WildFly (standalone mode) a different jmxServiceUrl must be specified and jboss-client.jar must be also on the class path, e.g.:
+
+> java -Dorg.jboss.weld.probe.jmxServiceUrl="service:jmx:http-remoting-jmx://127.0.0.1:9990" -cp '/opt/jboss/wildfly/bin/client/jboss-client.jar:target/weld-probe-jmx-1.0.0-SNAPSHOT-shaded.jar' org.jboss.weld.probe.ProbeJmx
+
 
 ## Configuration
 
@@ -18,11 +39,6 @@ Don't forget to allow to connect to a remote JVM process. E.g. use the following
 | org.jboss.weld.probe.undertowHost  | 127.0.0.1  | Undertow host - used to expose the HTML client |
 | org.jboss.weld.probe.undertowPort | 8181  | Undertow port - used to expose the HTML client |
 
-## WildFly
-
-For WildFly (standalone mode) a different jmxServiceUrl must be specified and jboss-client.jar must be also on the class path, e.g.:
-
-> java -Dorg.jboss.weld.probe.jmxServiceUrl="service:jmx:http-remoting-jmx://127.0.0.1:9990" -cp '/opt/jboss/wildfly/bin/client/jboss-client.jar:target/weld-probe-jmx-1.0.0-SNAPSHOT-shaded.jar' org.jboss.weld.probe.ProbeJmx
 
 ## Blogpost and JBoss Forge example
 
