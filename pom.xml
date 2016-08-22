@@ -1,15 +1,15 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
    <modelVersion>4.0.0</modelVersion>
-   <artifactId>weld-probe-jmx</artifactId>
+   <artifactId>weld-probe-client-adapter</artifactId>
    <version>1.0.0-SNAPSHOT</version>
 
-   <name>Weld Probe JMX</name>
+   <name>Weld Probe Client Adapter</name>
 
    <parent>
       <groupId>org.jboss.weld</groupId>
       <artifactId>weld-parent</artifactId>
-      <version>32</version>
+      <version>34</version>
    </parent>
 
    <url>http://weld.cdi-spec.org</url>
