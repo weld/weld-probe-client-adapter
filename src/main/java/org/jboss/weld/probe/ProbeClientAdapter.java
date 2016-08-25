@@ -16,6 +16,10 @@
  */
 package org.jboss.weld.probe;
 
+import static java.lang.System.err;
+import static java.lang.System.exit;
+import static java.lang.System.out;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -109,10 +113,10 @@ public class ProbeClientAdapter {
 
     void start() {
         if (exportFile != null) {
-            System.out.println("Loading data from an export file: " + exportFile);
+            out.println("Loading data from an export file: " + exportFile);
         } else {
             String jmxServiceUrl = System.getProperty(SYSTEM_PROPERTY_JMX_SERVICE_URL, DEFAULT_JMX_SERVICE_URL);
-            System.out.println("Connecting to a remote JMX server: " + jmxServiceUrl);
+            out.println("Connecting to a remote JMX server: " + jmxServiceUrl);
             try (JMXConnector jmxc = JMXConnectorFactory.connect(new JMXServiceURL(jmxServiceUrl), null)) {
 
                 connection = jmxc.getMBeanServerConnection();
@@ -125,8 +129,8 @@ public class ProbeClientAdapter {
                 names = new ArrayList<>(connection.queryNames(queryName, null));
 
                 if (names.isEmpty()) {
-                    System.err.println("No Weld containers with Probe JMX enabled");
-                    System.exit(1);
+                    err.println("No Weld containers with Probe JMX enabled");
+                    exit(1);
                 }
 
             } catch (IOException e) {
@@ -158,12 +162,12 @@ public class ProbeClientAdapter {
                 reconnect(index, names.get(index));
             }
         } else if ("h".equals(command) || "help".equals(command)) {
-            System.out.println("Help - available commands: ");
-            System.out.println("'e' or 'exit' to exit?");
-            System.out.println("'c' or 'connect' to connect/reconnect to a Weld container");
-            System.out.println("'h' or 'help' to show this help");
+            out.println("Help - available commands: ");
+            out.println("'e' or 'exit' to exit?");
+            out.println("'c' or 'connect' to connect/reconnect to a Weld container");
+            out.println("'h' or 'help' to show this help");
         } else {
-            System.out.println("Connected to the Weld container [" + currentIndex + "]: " + exportFile != null ? exportFile : names.get(currentIndex));
+            out.println("Connected to the Weld container [" + currentIndex + "]: " + exportFile != null ? exportFile : names.get(currentIndex));
         }
     }
 
@@ -195,7 +199,7 @@ public class ProbeClientAdapter {
             select.append(iterator.next());
             select.append(System.lineSeparator());
         }
-        System.out.println(select);
+        out.println(select);
         return commandPrompt();
     }
 
@@ -208,14 +212,14 @@ public class ProbeClientAdapter {
     }
 
     private void reconnect(Integer index, ObjectName mBeanName) {
-        System.out.println("Connecting to the Weld container [" + index + "]: " + mBeanName);
+        out.println("Connecting to the Weld container [" + index + "]: " + mBeanName);
         restart(JMX.newMXBeanProxy(connection, mBeanName, JsonDataProvider.class));
     }
 
     private void restart(JsonDataProvider jsonDataProvider) {
 
         stopUndertow();
-        System.out.println("Starting Undertow...");
+        out.println("Starting Undertow...");
 
         DeploymentInfo servletBuilder = Servlets.deployment().setClassLoader(ProbeClientAdapter.class.getClassLoader())
                 .setContextPath("/" + PROBE_CLIENT_ADAPTER_APP).setDeploymentName("probe-jmx.war")
@@ -247,12 +251,12 @@ public class ProbeClientAdapter {
         info.append(PROBE_CLIENT_ADAPTER_APP);
         info.append("/weld-probe");
         info.append(System.lineSeparator());
-        System.out.println(info);
+        out.println(info);
     }
 
     private void stopUndertow() {
         if (undertow != null) {
-            System.out.println("Stopping Undertow...");
+            out.println("Stopping Undertow...");
             undertow.stop();
         }
     }
