@@ -146,6 +146,7 @@ class ExportFileJsonDataProvider implements JsonDataProvider {
 
     @Override
     public String receiveBeans(int pageIndex, int pageSize, String filters, String representation) {
+        // Representation is ignored ATM
         Page<JsonObject> page = Queries.find(
                 StreamSupport.stream(beans.spliterator(), false).map(element -> element.getAsJsonObject()).collect(Collectors.toList()), pageIndex, pageSize,
                 Queries.initFilters(filters, new ExportBeanFilters(bdasMap)));
@@ -159,7 +160,18 @@ class ExportFileJsonDataProvider implements JsonDataProvider {
         for (JsonElement bean : beans) {
             JsonElement idElement = bean.getAsJsonObject().get(ID);
             if (idElement != null && idElement.getAsString().equals(id)) {
-                // TODO transient stuff
+                if (!transientDependents) {
+                    JsonElement dependents = bean.getAsJsonObject().get(Strings.DEPENDENTS);
+                    if (dependents != null) {
+                        dependents.getAsJsonArray().forEach(dependent -> dependent.getAsJsonObject().remove(Strings.DEPENDENTS));
+                    }
+                }
+                if (!transientDependencies) {
+                    JsonElement dependencies = bean.getAsJsonObject().get(Strings.DEPENDENCIES);
+                    if (dependencies != null) {
+                        dependencies.getAsJsonArray().forEach(dependency -> dependency.getAsJsonObject().remove(Strings.DEPENDENCIES));
+                    }
+                }
                 return bean.toString();
             }
         }
@@ -172,7 +184,8 @@ class ExportFileJsonDataProvider implements JsonDataProvider {
     }
 
     @Override
-    public String receiveObservers(int pageIndex, int pageSize, String filters) {
+    public String receiveObservers(int pageIndex, int pageSize, String filters, String representation) {
+        // Representation is ignored ATM
         Page<JsonObject> page = Queries.find(
                 StreamSupport.stream(observers.spliterator(), false).map(element -> element.getAsJsonObject()).collect(Collectors.toList()), pageIndex,
                 pageSize, Queries.initFilters(filters, new ExportObserversFilters(bdasMap)));
@@ -203,7 +216,8 @@ class ExportFileJsonDataProvider implements JsonDataProvider {
     }
 
     @Override
-    public String receiveInvocations(int pageIndex, int pageSize, String filters) {
+    public String receiveInvocations(int pageIndex, int pageSize, String filters, String representation) {
+        // Representation is ignored ATM
         Page<JsonObject> page = Queries.find(
                 StreamSupport.stream(invocations.spliterator(), false).map(element -> element.getAsJsonObject()).collect(Collectors.toList()), pageIndex,
                 pageSize, Queries.initFilters(filters, new ExportInvocationsFilters()));
