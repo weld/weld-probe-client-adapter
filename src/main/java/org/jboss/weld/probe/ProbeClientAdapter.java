@@ -114,6 +114,7 @@ public class ProbeClientAdapter {
     void start() {
         if (exportFile != null) {
             out.println("Loading data from an export file: " + exportFile);
+            startProcessing();
         } else {
             String jmxServiceUrl = System.getProperty(SYSTEM_PROPERTY_JMX_SERVICE_URL, DEFAULT_JMX_SERVICE_URL);
             out.println("Connecting to a remote JMX server: " + jmxServiceUrl);
@@ -122,7 +123,7 @@ public class ProbeClientAdapter {
                 connection = jmxc.getMBeanServerConnection();
                 ObjectName queryName;
                 try {
-                    queryName = new ObjectName(Probe.class.getPackage().getName() + ":type=JsonData,context=*");
+                    queryName = new ObjectName(JsonDataProvider.class.getPackage().getName() + ":type=JsonData,context=*");
                 } catch (MalformedObjectNameException e) {
                     throw new RuntimeException(e);
                 }
@@ -132,18 +133,18 @@ public class ProbeClientAdapter {
                     err.println("No Weld containers with Probe JMX enabled");
                     exit(1);
                 }
-
+                startProcessing();
             } catch (IOException e) {
                 throw new RuntimeException("Could not connect to a remote JMX server", e);
             }
         }
+    }
 
+    private void startProcessing() {
         String command = "c";
-
         do {
             processCommand(command);
         } while (!isExit(command = commandPrompt()));
-
         stopUndertow();
     }
 
@@ -154,6 +155,10 @@ public class ProbeClientAdapter {
                 restart(new ExportFileJsonDataProvider(exportFile));
             } else {
                 String indexStr = selectionPrompt();
+                if (isExit(indexStr)) {
+                    stopUndertow();
+                    exit(0);
+                }
                 Integer index;
                 while ((index = parseIndexStr(indexStr)) == null || index > names.size() || index < 0) {
                     indexStr = selectionPrompt();
@@ -167,7 +172,7 @@ public class ProbeClientAdapter {
             out.println("'c' or 'connect' to connect/reconnect to a Weld container");
             out.println("'h' or 'help' to show this help");
         } else {
-            out.println("Connected to the Weld container [" + currentIndex + "]: " + exportFile != null ? exportFile : names.get(currentIndex));
+            out.println("Connected to the Weld container [" + currentIndex + "]: " + (exportFile != null ? exportFile : names.get(currentIndex)));
         }
     }
 
